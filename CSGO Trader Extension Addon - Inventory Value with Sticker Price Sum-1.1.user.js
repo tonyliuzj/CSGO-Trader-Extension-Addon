@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CSGO Trader Extension Addon - Inventory Value with Sticker Price Sum
 // @namespace    https://tonyliu.uk
-// @version      1.1
+// @version      1.2
 // @description  Total inventory value with applyied sticker price, adds an inline stickers sum and combined total next to “Total Inventory Value:”, need to work with CSGO Trader Browser Extension.
 // @match        https://steamcommunity.com/id/*/inventory*
 // @match        https://steamcommunity.com/profiles/*/inventory*
@@ -9,6 +9,8 @@
 // @run-at       document-idle
 // @grant        none
 // @license MIT
+// @downloadURL https://update.greasyfork.org/scripts/554328/CSGO%20Trader%20Extension%20Addon%20-%20Inventory%20Value%20with%20Sticker%20Price%20Sum.user.js
+// @updateURL https://update.greasyfork.org/scripts/554328/CSGO%20Trader%20Extension%20Addon%20-%20Inventory%20Value%20with%20Sticker%20Price%20Sum.meta.js
 // ==/UserScript==
 
 (function () {
@@ -22,13 +24,12 @@
       .tm-sticker-badge {
         display: inline-block;
         margin-left: 8px;
-        font-size: 12px;
+        font-size: 16px;
         opacity: .9;
         white-space: nowrap;
         vertical-align: baseline;
       }
       .tm-sticker-badge strong { font-weight: 600; }
-      .tm-sticker-badge .muted { opacity: .7; }
     `;
     document.head.appendChild(style);
   }
@@ -80,31 +81,24 @@
     return contains || null;
   }
 
-  function extractBaseTotal(el) {
-    if (!el) return { value: 0, symbol: '' };
-    const text = Array.from(el.childNodes)
-      .filter(n => !(n.nodeType === 1 && n.classList && n.classList.contains('tm-sticker-badge')))
-      .map(n => n.textContent)
-      .join(' ');
-    const m =
-      text.match(new RegExp(`${CURRENCY_REGEX.source}\\s*${NUM_REGEX.source}`)) ||
-      text.match(NUM_REGEX);
-    if (!m) return { value: 0, symbol: '' };
-    return parsePrice(m[0]);
+  function getBaseTotal() {
+  const el = document.getElementById('inventoryTotalValue');
+  if (!el) return { value: 0, symbol: '' };
+  return parsePrice(el.textContent.trim());
   }
 
   function upsertInlineBadge() {
     const container = findTotalInventoryValueNode();
     if (!container) return;
     let badge = container.querySelector('.tm-sticker-badge');
-    const base = extractBaseTotal(container);
+    const base = getBaseTotal();
     const stickers = sumStickerPrices();
     const combined = base.value + stickers.total;
     const currencySymbol = base.symbol || stickers.symbol || '£';
-    const text = `• Stickers: ${formatMoney(stickers.total, currencySymbol)} (${stickers.count})  =  `;
+    const text = `+ Stickers: ${formatMoney(stickers.total, currencySymbol)} (${stickers.count})  =  `;
     const combinedHTML = `<strong>${formatMoney(combined, currencySymbol)}</strong>`;
     const content = `
-      <span class="muted">${text}</span>${combinedHTML}
+      <span>${text}</span>${combinedHTML}
     `;
 
     if (!badge) {
@@ -135,3 +129,4 @@
   if (document.readyState === 'complete' || document.readyState === 'interactive') start();
   else window.addEventListener('DOMContentLoaded', start, { once: true });
 })();
+
